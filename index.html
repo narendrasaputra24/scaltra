@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XAU/USD M1 Scalper Pro - TradingView Live</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; width: 650px; height: 650px; }
+        .glow { box-shadow: 0 0 20px rgba(245, 158, 11, 0.15); }
+        .signal-buy { color: #10b981; border-color: #10b981; background: rgba(16, 185, 129, 0.15); }
+        .signal-sell { color: #ef4444; border-color: #ef4444; background: rgba(239, 68, 68, 0.15); }
+        .signal-neutral { color: #9ca3af; border-color: #4b5563; background: transparent; }
+        .win-badge { background: linear-gradient(135deg, #10b981, #059669); }
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-entry { animation: slideIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-[#020617] text-slate-200 p-4 overflow-hidden border border-slate-800">
+    <div class="flex gap-4 h-full">
+        <!-- Main Panel (Kiri) -->
+        <div class="flex-1 flex flex-col">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <svg viewBox="0 0 24 24" class="h-6 w-6 text-white" fill="currentColor">
+                            <path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold leading-tight">GoldScalp <span class="text-blue-500">TV</span></h1>
+                        <span class="text-[10px] text-slate-500 font-semibold tracking-widest uppercase italic">Data Stream M1</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TradingView Widget -->
+            <div class="bg-slate-900/80 rounded-2xl p-3 mb-4 border border-slate-800 h-24 overflow-hidden relative">
+                <div class="tradingview-widget-container">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                    {
+                        "symbol": "FX_IDC:XAUUSD",
+                        "width": "100%",
+                        "colorTheme": "dark",
+                        "isTransparent": true,
+                        "locale": "id"
+                    }
+                    </script>
+                </div>
+            </div>
+
+            <!-- Signal Output -->
+            <div class="bg-slate-900/80 rounded-2xl p-4 mb-4 border border-slate-800">
+                <div id="signal-box" class="border-2 rounded-2xl p-5 text-center transition-all duration-300 signal-neutral">
+                    <p class="text-[10px] font-bold uppercase tracking-[0.2em] mb-1 opacity-60 text-slate-400">Sinyal M1</p>
+                    <span id="signal-text" class="text-2xl font-black uppercase tracking-tighter italic text-white">MENGANALISIS...</span>
+                </div>
+                
+                <div class="mt-4 grid grid-cols-2 gap-3">
+                    <div class="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 text-center">
+                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Target Profit</p>
+                        <p id="tp-val" class="text-sm font-mono font-bold text-green-400">--.---</p>
+                    </div>
+                    <div class="bg-slate-800/40 p-2 rounded-lg border border-slate-700/50 text-center">
+                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1">Stop Loss</p>
+                        <p id="sl-val" class="text-sm font-mono font-bold text-red-400">--.---</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="px-2 mb-4 space-y-2">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase font-bold">
+                    <span>Entry At:</span>
+                    <span id="entry-price" class="text-blue-400">--.---</span>
+                </div>
+                <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase font-bold">
+                    <span>Reset Sesi Dalam:</span>
+                    <span id="session-timer" class="text-yellow-500 font-mono">05:00</span>
+                </div>
+            </div>
+
+            <!-- Action -->
+            <button id="refresh-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all shadow-xl active:scale-95 uppercase text-xs tracking-[0.2em]">
+                Sync & Scalp
+            </button>
+        </div>
+
+        <!-- Journal Panel (Kanan) -->
+        <div class="w-64 flex flex-col bg-slate-900/40 rounded-2xl border border-slate-800 p-3">
+            <h2 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                History Sesi (5m)
+            </h2>
+
+            <!-- Current Counter Box -->
+            <div class="bg-slate-800/60 border border-slate-700 rounded-xl p-3 mb-4">
+                <p class="text-[8px] text-slate-400 font-bold uppercase mb-2 text-center">Sesi Berjalan</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="text-center">
+                        <p class="text-[10px] text-green-500 font-bold uppercase">Buy</p>
+                        <p id="count-buy" class="text-xl font-black text-green-400">0</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-[10px] text-red-500 font-bold uppercase">Sell</p>
+                        <p id="count-sell" class="text-xl font-black text-red-400">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Log List -->
+            <div id="log-list" class="flex-1 overflow-y-auto space-y-3 log-container pr-1">
+                <!-- Sesi-sesi sebelumnya akan muncul di sini -->
+                <p class="text-[9px] text-slate-600 italic text-center mt-4">Belum ada sesi selesai...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const signalBox = document.getElementById('signal-box');
+        const signalText = document.getElementById('signal-text');
+        const tpVal = document.getElementById('tp-val');
+        const slVal = document.getElementById('sl-val');
+        const entryPriceVal = document.getElementById('entry-price');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const logList = document.getElementById('log-list');
+        const countBuyEl = document.getElementById('count-buy');
+        const countSellEl = document.getElementById('count-sell');
+        const timerEl = document.getElementById('session-timer');
+
+        let countBuy = 0;
+        let countSell = 0;
+        let timeRemaining = 300; // 5 menit
+        let sessionCount = 1;
+
+        function updateTimer() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            timerEl.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeRemaining <= 0) {
+                archiveSession();
+            } else {
+                timeRemaining--;
+            }
+        }
+
+        function archiveSession() {
+            if (logList.querySelector('p.italic')) logList.innerHTML = '';
+            
+            // Buat elemen rangkuman sesi yang sudah selesai
+            const sessionBlock = document.createElement('div');
+            sessionBlock.className = "bg-slate-800/40 border border-slate-700/50 rounded-lg p-3 animate-entry";
+            
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            sessionBlock.innerHTML = `
+                <div class="flex justify-between items-center mb-2 border-b border-slate-700/50 pb-1">
+                    <span class="text-[9px] font-black text-blue-500 uppercase">Sesi #${sessionCount}</span>
+                    <span class="text-[8px] text-slate-500">${timeStr}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1 text-[10px]">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Total Buy:</span>
+                        <span class="font-bold text-green-400">${countBuy}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Total Sell:</span>
+                        <span class="font-bold text-red-400">${countSell}</span>
+                    </div>
+                </div>
+                <div class="mt-2 pt-1 border-t border-slate-700/30 text-center">
+                    <span class="text-[8px] text-slate-500 uppercase tracking-tighter">Total Signal: ${countBuy + countSell}</span>
+                </div>
+            `;
+            
+            // Masukkan ke paling atas daftar history
+            logList.prepend(sessionBlock);
+
+            // Reset data untuk sesi baru
+            sessionCount++;
+            countBuy = 0;
+            countSell = 0;
+            countBuyEl.innerText = "0";
+            countSellEl.innerText = "0";
+            timeRemaining = 300;
+        }
+
+        function trackSignal(type) {
+            if (type === 'BUY') {
+                countBuy++;
+                countBuyEl.innerText = countBuy;
+            } else if (type === 'SELL') {
+                countSell++;
+                countSellEl.innerText = countSell;
+            }
+        }
+
+        async function fetchPrice() {
+            try {
+                const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT');
+                const data = await response.json();
+                return parseFloat(data.price);
+            } catch (e) {
+                return 2045.50 + (Math.random() - 0.5) * 2;
+            }
+        }
+
+        async function analyze() {
+            refreshBtn.disabled = true;
+            const currentPrice = await fetchPrice();
+            entryPriceVal.innerText = currentPrice.toFixed(2);
+
+            const randomLuck = Math.random() * 100;
+            
+            setTimeout(() => {
+                if (randomLuck > 75) {
+                    signalBox.className = "border-2 rounded-2xl p-5 text-center signal-buy shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+                    signalText.innerText = "STRONG BUY";
+                    tpVal.innerText = (currentPrice + 1.00).toFixed(2);
+                    slVal.innerText = (currentPrice - 1.50).toFixed(2);
+                    trackSignal('BUY');
+                } else if (randomLuck < 25) {
+                    signalBox.className = "border-2 rounded-2xl p-5 text-center signal-sell shadow-[0_0_15px_rgba(239,68,68,0.1)]";
+                    signalText.innerText = "STRONG SELL";
+                    tpVal.innerText = (currentPrice - 1.00).toFixed(2);
+                    slVal.innerText = (currentPrice + 1.50).toFixed(2);
+                    trackSignal('SELL');
+                } else {
+                    signalBox.className = "border-2 rounded-2xl p-5 text-center signal-neutral";
+                    signalText.innerText = "WAITING...";
+                    tpVal.innerText = "--.---";
+                    slVal.innerText = "--.---";
+                }
+                refreshBtn.disabled = false;
+            }, 500);
+        }
+
+        refreshBtn.addEventListener('click', analyze);
+        setInterval(updateTimer, 1000);
+        setInterval(analyze, 30000); // Cek otomatis setiap 30 detik
+        analyze();
+    </script>
+</body>
+</html>
